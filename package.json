@@ -1,0 +1,18 @@
+{
+  "name": "swingpapago",
+  "description": "catherine-bot",
+  "version": "0.0.4",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "mkdirp": "3.0.1",
+    "google-spreadsheet": "3.3.0",
+    "i18next-scanner": "4.4.0"
+  },
+  "directories": {
+    "bin": "bin"
+  },
+  "bin": {
+    "spago": "./bin/cli.mjs"
+  }
+}
