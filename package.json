@@ -1,18 +1,29 @@
 {
   "name": "swingpapago",
   "description": "catherine-bot",
-  "version": "0.0.4",
+  "version": "0.0.9",
   "main": "index.js",
   "type": "module",
   "dependencies": {
-    "mkdirp": "3.0.1",
     "google-spreadsheet": "3.3.0",
-    "i18next-scanner": "4.4.0"
+    "mkdirp": "3.0.1"
   },
+  "peerDependencies": {
+    "dayjs": "^1.11.7",
+    "i18next": "^22.4.9",
+    "i18next-browser-languagedetector": "^7.0.1",
+    "react-i18next": "^12.1.4"
+  },
+  "files": [
+    "i18n"
+  ],
   "directories": {
     "bin": "bin"
   },
   "bin": {
     "spago": "./bin/cli.mjs"
+  },
+  "scripts": {
+    "sl": "spago download"
   }
 }

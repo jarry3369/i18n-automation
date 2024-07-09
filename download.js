@@ -1,5 +1,5 @@
 import { mkdirp } from 'mkdirp';
-import  fs from 'fs';
+import  { promises as fs } from 'fs';
 import path from 'path';
 
 import  {
@@ -35,7 +35,7 @@ async function fetchTranslationsFromSheetToJson(doc) {
     const key = row[columnKeyToHeader.key];
     lngs.forEach((lng) => {
       const translation = row[columnKeyToHeader[lng]];
-      if (translation === NOT_AVAILABLE_CELL) return;
+      // if (translation === NOT_AVAILABLE_CELL) return;
       if (!lngsMap[lng]) lngsMap[lng] = {};
 
       try {
@@ -59,24 +59,30 @@ async function checkAndMakeLocaleDir(dirPath, subDirs) {
   }));
 }
 
-
 async function updateJsonFromSheet() {
-  await checkAndMakeLocaleDir(localesPath, lngs);
+  try {
+    const doc = await loadSpreadsheet();
+    await checkAndMakeLocaleDir(localesPath, lngs);
 
-  const doc = await loadSpreadsheet();
-  const lngsMap = await fetchTranslationsFromSheetToJson(doc);
+    const lngsMap = await fetchTranslationsFromSheetToJson(doc);
 
-  fs.readdir(localesPath, (error, lngs) => {
-    if (error) {
-      throw error;
-    }
-    lngs.forEach((lng) => {
-      console.log(localesPath);
-      const localeJsonFilePath = `${localesPath}/${lng}/${ns}.json`;
+    const lngsFromDir = await fs.readdir(localesPath);
+
+    const writePromises = lngsFromDir.map(async (lng) => {
+      const localeJsonFilePath = path.join(localesPath, lng, `${ns}.json`);
       const jsonString = JSON.stringify(lngsMap[lng], null, 2);
-      fs.writeFile(localeJsonFilePath, jsonString, 'utf8', (err) => { if (err) throw err; });
+      
+      await fs.writeFile(localeJsonFilePath, jsonString, 'utf8');
+      console.log(`${lng} translation file has been generated at ${localeJsonFilePath}`);
     });
-  });
+
+    await Promise.all(writePromises);
+
+    console.log("All translation files have been updated successfully.");
+  } catch (error) {
+    console.error("An error occurred while updating JSON files:", error);
+    throw error;
+  }
 }
 
 export default updateJsonFromSheet;

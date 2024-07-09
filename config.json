@@ -1,0 +1,8 @@
+{
+  "credentials": "creds.json",
+  "outputCredentialsName": "spago.creds.json",
+  "packageJson": "package.json",
+  "i18nSourceDir": "i18n",
+  "i18nDestDir": "src/i18n",
+  "downloadScript": "spago download"
+}

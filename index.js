@@ -3,9 +3,7 @@ import r from 'readline';
 import f, { promises as fs, writeFileSync as w  } from 'fs';
 import  { GoogleSpreadsheet as gss }  from 'google-spreadsheet';
 
-import scanner_config from './scanner.cjs';
 const __cp = p.resolve('./spago.creds.json');
-
 const rl = r.createInterface({
 	input: process.stdin,
 	output: process.stdout
@@ -18,42 +16,70 @@ function qes(query) {
 	});
 }
 
-
 const ns = 'translation'
-const lngs = scanner_config.options.lngs;
-const loadPath = scanner_config.options.resource.loadPath;
+const loadPath = 'src/i18n/locales/{{lng}}/{{ns}}.json';
 const localesPath = loadPath.replace('/{{lng}}/{{ns}}.json', '');
 const rePluralPostfix = new RegExp(/_plural|_[\d]/g);
 const sheetId = 0;
 const NOT_AVAILABLE_CELL = '_N/A';
-const columnKeyToHeader = {
-  key: 'key',
-  'ko': 'ko',
-  'en': 'en',
-};
-let doc,o,d, n
+let doc, o, d, n, lngs, columnKeyToHeader;
 
-async function loadSpreadsheet() {
+async function loadSpreadsheet(skipFlag = false) {
   const { spreadsheet_doc_id, ...creds  } = JSON.parse(await fs.readFile(__cp, 'utf-8'));
 
+  let spreadsheetId;
   if(spreadsheet_doc_id) {
-    doc  = new gss(spreadsheet_doc_id);
-  }else {
+    spreadsheetId = spreadsheet_doc_id;
+  } else {
     const url = await qes('please enter the sheet url: ');
-    const s = url.match(/\/d\/([a-zA-Z0-9-_]+)\/edit/)[1];
+    spreadsheetId = url.match(/\/d\/([a-zA-Z0-9-_]+)\/edit/)[1];
     n = 'spago.creds.json'
     d = f.readFileSync(n);
     o = JSON.parse(d) || {};
-    o.spreadsheet_doc_id = s;
+    o.spreadsheet_doc_id = spreadsheetId;
     w(n, JSON.stringify(o, 0, /\t/.test(d) ? '\t' : 2) + '\n')
-
-    doc = new gss(s);
   }
+
+  doc = new gss(spreadsheetId);
   await doc.useServiceAccountAuth(creds);
   await doc.loadInfo();
 
+  const sheet = doc.sheetsByIndex[sheetId];
+  await sheet.loadHeaderRow();
+  const headers = sheet.headerValues;
+
+  lngs = headers.filter(header => header !== 'key');
+  console.log('Loaded spreadsheet with detected languages:', lngs.join(', ', '\n'));
+  
+  columnKeyToHeader = { key: 'key' };
+  for (const lng of lngs) {
+    columnKeyToHeader[lng] = lng;
+  }
+
+  if(!skipFlag) await generateResourceFile();
+
   return doc;
 }
+
+async function generateResourceFile() {
+  const imports = lngs.map(lng => `import ${lng} from "./locales/${lng}/translation.json";`).join('\n');
+  const resourceObject = lngs.map(lng => `  ${lng}: { translation: ${lng} }`).join(',\n');
+  
+  const content = `
+  ${imports}
+  
+  export const resources = {
+  ${resourceObject}
+  } as const;
+  
+  export default resources;
+    `.trim();
+
+  const resourcePath = p.resolve('./src/i18n/resource.ts');
+  await fs.writeFile(resourcePath, content);
+  console.log(`resource.ts file has been generated at ${resourcePath}`);
+}
+
 
 function getPureKey(key = '') {
   return key.replace(rePluralPostfix, '');
